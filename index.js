@@ -2,7 +2,9 @@
 
 const http = require('http')
 const util = require('util')
+const fs = require('fs')
 
+const mkdir = util.promisify(fs.mkdir)
 const stripCreds = /Credential=([\w-/0-9a-zA-Z]+),/
 
 /** @typedef {AWS.Lambda.Types.FunctionConfiguration} FunctionConfiguration */
@@ -10,7 +12,11 @@ const stripCreds = /Credential=([\w-/0-9a-zA-Z]+),/
 
 class FakeLambdaAPI {
   /**
-   * @param {{ port?: number, hostname?: string }} [options]
+   * @param {{
+   *    port?: number,
+   *    hostname?: string,
+   *    cachePath?: string
+   * }} [options]
    */
   constructor (options = {}) {
     /** @type {number} */
@@ -22,6 +28,8 @@ class FakeLambdaAPI {
     this.httpServer = http.createServer()
     /** @type {string|null} */
     this.hostPort = null
+    /** @type {string|null} */
+    this.cachePath = options.cachePath || null
 
     // https://github.com/typescript-eslint/typescript-eslint/issues/1943
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -61,9 +69,92 @@ class FakeLambdaAPI {
     })()
   }
 
-  async cacheFunctionsToDisk () {}
+  /**
+   * @param {import('aws-sdk')} AWS
+   * @returns {Promise<string[]>}
+   */
+  async getAllRegions (AWS) {
+    const ec2 = new AWS.EC2({ region: 'us-east-1' })
+
+    const data = await ec2.describeRegions().promise()
+
+    if (!data.Regions) return []
+    return data.Regions.map((r) => {
+      if (!r.RegionName) throw new Error('Missing RegionName')
+      return r.RegionName
+    })
+  }
+
+  /**
+   * @param {import('aws-sdk')} AWS
+   * @param {string[] | 'all'} regions
+   * @returns {Promise<void>}
+   */
+  async fetchAndCache (AWS, regions) {
+    if (regions === 'all') {
+      regions = await this.getAllRegions(AWS)
+    }
+
+    /** @type {Promise<void>[]} */
+    const tasks = []
+    for (const region of regions) {
+      tasks.push(this.fetchAndCacheForRegion(AWS, region))
+    }
+    await Promise.all(tasks)
+  }
+
+  /**
+   * @param {import('aws-sdk')} AWS
+   * @param {string} region
+   * @returns {Promise<void>}
+   */
+  async fetchAndCacheForRegion (AWS, region) {
+    const lambda = new AWS.Lambda({
+      region: region
+    })
+
+    const data = await lambda.listFunctions().promise()
+
+    if (!lambda.config.credentials) throw new Error('no credentials')
+    const accessKeyId = lambda.config.credentials.accessKeyId
+
+    if (!data.Functions || data.Functions.length === 0) {
+      return
+    }
+    await this.cacheFunctionsToDisk(accessKeyId, region, data.Functions)
+    this.populateFunctions(accessKeyId, region, data.Functions)
+  }
+
+  /**
+   * @param {string} profile
+   * @param {string} region
+   * @param {FunctionConfiguration[]} functions
+   * @returns {Promise<void>}
+   */
+  async cacheFunctionsToDisk (profile, region, functions) {
+    if (!this.cachePath) {
+      throw new Error('Missing this.cachePath')
+    }
+
+    await mkdir(this.cachePath, { recursive: true })
+
+  }
+
   async populateFromCache () {}
-  populateFunctions () {}
+
+  /**
+   * @param {string} profile
+   * @param {string} region
+   * @param {FunctionConfiguration[]} functions
+   * @returns {void}
+   */
+  populateFunctions (profile, region, functions) {
+    const key = `${profile}::${region}`
+    const funcs = this._functions.get(key) || []
+    funcs.push(...functions)
+
+    this._functions.set(key, funcs)
+  }
 
   /**
    * @param {http.IncomingMessage} req
