@@ -1,0 +1,43 @@
+{
+  "name": "fake-lambda-api",
+  "version": "1.0.0",
+  "description": "Setup a fake Lambda API server for testing purposes",
+  "main": "index.js",
+  "scripts": {
+    "check": "npr tsc -p .",
+    "lint": "npr tsdocstandard -v",
+    "test": "npm run check && npm run lint && node test/index.js && npm run type-coverage",
+    "type-coverage": "npr type-coverage --detail --strict --ignore-catch --at-least 100"
+  },
+  "dependencies": {},
+  "binDependencies": {
+    "tsdocstandard": "15.4.2",
+    "type-coverage": "2.4.3",
+    "typescript": "3.9.2"
+  },
+  "devDependencies": {
+    "@pre-bundled/tape": "4.11.0",
+    "@types/node": "12.0.2",
+    "aws-sdk": "2.549.0",
+    "npm-bin-deps": "1.8.2",
+    "tape-cluster": "3.2.1"
+  },
+  "author": "Raynos <raynos2@gmail.com>",
+  "repository": "git://github.com/Raynos/fake-lambda-api.git",
+  "homepage": "https://github.com/Raynos/fake-lambda-api",
+  "bugs": {
+    "url": "https://github.com/Raynos/fake-lambda-api/issues",
+    "email": "raynos2@gmail.com"
+  },
+  "contributors": [
+    {
+      "name": "Raynos"
+    }
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/Raynos/fake-lambda-api/raw/master/LICENSE"
+    }
+  ]
+}
