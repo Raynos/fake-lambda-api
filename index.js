@@ -5,22 +5,29 @@ const util = require('util')
 
 const stripCreds = /Credential=([\w-/0-9a-zA-Z]+),/
 
+/** @typedef {AWS.Lambda.Types.FunctionConfiguration} FunctionConfiguration */
 /** @typedef {{ (err?: Error): void; }} Callback */
 
 class FakeLambdaAPI {
   /**
-   *
    * @param {{ port?: number, hostname?: string }} [options]
    */
   constructor (options = {}) {
-    this.requestPort = 'port' in options ? options.port : 0
+    /** @type {number} */
+    this.requestPort = typeof options.port === 'number' ? options.port : 0
+    /** @type {string} */
     this.requestHost = options.hostname || 'localhost'
 
+    /** @type {http.Server} */
     this.httpServer = http.createServer()
     /** @type {string|null} */
     this.hostPort = null
 
-    this._profiles = new Map()
+    // https://github.com/typescript-eslint/typescript-eslint/issues/1943
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    /** @type {Map<string, FunctionConfiguration[]>} */
+    this._functions = new Map()
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment */
   }
 
   /** @returns {Promise<string>} */
@@ -61,6 +68,7 @@ class FakeLambdaAPI {
   /**
    * @param {http.IncomingMessage} req
    * @param {http.ServerResponse} res
+   * @returns {void}
    */
   _handleServerRequest (req, res) {
     /** @type {Array<Buffer>} */
@@ -83,13 +91,14 @@ class FakeLambdaAPI {
         res.end(JSON.stringify(respBody))
       } else {
         res.statusCode = 500
-        res.end('URL not supported: ' + req.url)
+        res.end('URL not supported: ' + url)
       }
     })
   }
 
   /**
    * @param {http.IncomingMessage} req
+   * @returns {FunctionConfiguration[]}
    */
   _getFunctionsMap (req) {
     const authHeader = req.headers.authorization
@@ -107,11 +116,12 @@ class FakeLambdaAPI {
 
     const key = `${profile}::${region}`
 
-    if (this._profiles.has(key)) {
-      return this._profiles.get(key)
+    const functions = this._functions.get(key)
+    if (functions) {
+      return functions
     }
 
-    return this._profiles.get('default::us-east-1')
+    return this._functions.get('default::us-east-1') || []
   }
 
   /**
@@ -121,18 +131,14 @@ class FakeLambdaAPI {
    */
   _handleListFunctions (req, _bodyBuf) {
     // console.log('hmm', req, req.headers)
-    const functionsMap = this._getFunctionsMap(req)
-    const functionValues = []
-    if (functionsMap) {
-      functionValues.push(...functionsMap.values())
-    }
+    const functionsArr = this._getFunctionsMap(req).slice()
 
     // TODO: req.Marker, req.MaxItems
     // TODO: pagination
 
     return {
       NextMarker: undefined,
-      Functions: []
+      Functions: functionsArr
     }
   }
 }

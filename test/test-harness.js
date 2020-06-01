@@ -8,6 +8,7 @@ const FakeLambdaAPI = require('../index').FakeLambdaAPI
 
 class TestHarness {
   constructor () {
+    /** @type {FakeLambdaAPI} */
     this.lambdaServer = new FakeLambdaAPI()
     /** @type {AWS.Lambda|null} */
     this.lambda = null
@@ -26,6 +27,7 @@ class TestHarness {
     })
   }
 
+  /** @returns {Promise<AWS.Lambda.Types.ListFunctionsResponse>} */
   async listFunctions () {
     if (!this.lambda) {
       throw new Error('not bootstrapped')

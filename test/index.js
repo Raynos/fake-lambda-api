@@ -1,6 +1,7 @@
 'use strict'
 
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', (maybeErr) => {
+  const err = /** @type {Error} */ (maybeErr)
   process.nextTick(() => { throw err })
 })
 
@@ -19,3 +20,8 @@ test('listing functions', async (harness, t) => {
 
   t.end()
 })
+
+test('listing functions with populate()')
+test('listing functions with MaxItems')
+test('listing functions with Marker')
+test('listing functions with cache.')
