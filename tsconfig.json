@@ -24,5 +24,8 @@
     "index.js",
     "scripts/*.js",
     "test/**/*"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

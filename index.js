@@ -1,10 +1,14 @@
 'use strict'
 
 const http = require('http')
+const path = require('path')
 const util = require('util')
 const fs = require('fs')
 
 const mkdir = util.promisify(fs.mkdir)
+const writeFile = util.promisify(fs.writeFile)
+const readdir = util.promisify(fs.readdir)
+const readFile = util.promisify(fs.readFile)
 const stripCreds = /Credential=([\w-/0-9a-zA-Z]+),/
 
 /** @typedef {AWS.Lambda.Types.FunctionConfiguration} FunctionConfiguration */
@@ -58,7 +62,9 @@ class FakeLambdaAPI {
 
     this.hostPort = `${addr.address}:${addr.port}`
 
-    // TODO: if this.cachePath
+    if (this.cachePath) {
+      await this.populateFromCache()
+    }
 
     return this.hostPort
   }
@@ -136,11 +142,56 @@ class FakeLambdaAPI {
       throw new Error('Missing this.cachePath')
     }
 
-    await mkdir(this.cachePath, { recursive: true })
-
+    const functionsDir = path.join(this.cachePath, 'functions')
+    await mkdir(functionsDir, { recursive: true })
+    await writeFile(
+      path.join(
+        functionsDir, `${profile}::${region}-functions.json`
+      ), JSON.stringify({
+        type: 'cached-functions',
+        profile: profile,
+        region: region,
+        data: functions
+      }, null, 4),
+      'utf8'
+    )
   }
 
-  async populateFromCache () {}
+  /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+  /**
+   * @param {string} [filePath]
+   * @returns {Promise<void>}
+   */
+  async populateFromCache (filePath) {
+    const cachePath = filePath || this.cachePath
+    if (!cachePath) {
+      throw new Error('missing filePath')
+    }
+
+    /** @type {string[] | null} */
+    let functionFiles = null
+    try {
+      functionFiles = await readdir(path.join(cachePath, 'functions'))
+    } catch (maybeErr) {
+      const err = /** @type {NodeJS.ErrnoException} */ (maybeErr)
+      if (err.code !== 'ENOENT') throw err
+    }
+
+    if (functionFiles) {
+      for (const fileName of functionFiles) {
+        const functionsStr = await readFile(path.join(
+          cachePath, 'functions', fileName
+        ), 'utf8')
+        const functions = /** @type {{
+          profile: string;
+          region: string;
+          data: FunctionConfiguration[]
+        }} */ (JSON.parse(functionsStr))
+        this.populateFunctions(functions.profile, functions.region, functions.data)
+      }
+    }
+  }
+  /* eslint-enable @typescript-eslint/no-unsafe-assignment */
 
   /**
    * @param {string} profile
