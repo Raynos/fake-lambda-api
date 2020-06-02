@@ -47,13 +47,19 @@ class TestHarness {
     })
   }
 
-  /** @returns {Promise<AWS.Lambda.Types.ListFunctionsResponse>} */
-  async listFunctions () {
+  /**
+   * @param {{ MaxItems?: number, Marker?: string }} options
+   * @returns {Promise<AWS.Lambda.Types.ListFunctionsResponse>}
+   */
+  async listFunctions (options = {}) {
     if (!this.lambda) {
       throw new Error('not bootstrapped')
     }
 
-    return this.lambda.listFunctions().promise()
+    return this.lambda.listFunctions({
+      MaxItems: options.MaxItems,
+      Marker: options.Marker
+    }).promise()
   }
 
   /** @returns {Promise<void>} */

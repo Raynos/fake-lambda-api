@@ -135,5 +135,35 @@ test('listing functions with cache.', async (harness, t) => {
   t.end()
 })
 
-test('listing functions with MaxItems')
+test('listing functions with MaxItems', async (harness, t) => {
+  const lambdaServer = harness.lambdaServer
+
+  lambdaServer.populateFunctions('123', 'us-east-1', [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }, {
+    FunctionName: 'contact2'
+  }, {
+    FunctionName: 'contact3'
+  }, {
+    FunctionName: 'contact4'
+  }])
+
+  const data = await harness.listFunctions({
+    MaxItems: 3
+  })
+  t.ok(data)
+  t.equal(data.Functions && data.Functions.length, 3)
+  t.deepEqual(data.Functions, [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }, {
+    FunctionName: 'contact2'
+  }])
+
+  t.end()
+})
+
 test('listing functions with Marker')

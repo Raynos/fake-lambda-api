@@ -4,6 +4,7 @@ const http = require('http')
 const path = require('path')
 const util = require('util')
 const fs = require('fs')
+const URL = require('url').URL
 
 const mkdir = util.promisify(fs.mkdir)
 const writeFile = util.promisify(fs.writeFile)
@@ -272,10 +273,17 @@ class FakeLambdaAPI {
    * @returns {AWS.Lambda.Types.ListFunctionsResponse}
    */
   _handleListFunctions (req, _bodyBuf) {
-    // console.log('hmm', req, req.headers)
-    const functionsArr = this._getFunctionsMap(req).slice()
+    const url = /** @type {string} */ (req.url)
+    const urlObj = new URL(url, 'http://localhost')
 
-    // TODO: req.Marker, req.MaxItems
+    const MaxItems = urlObj.searchParams.get('MaxItems')
+    const maxItems = MaxItems ? parseInt(MaxItems, 10) : 50
+
+    const functionsArr = this._getFunctionsMap(req).slice(
+      0, maxItems
+    )
+
+    // TODO: req.Marker
     // TODO: pagination
 
     return {
