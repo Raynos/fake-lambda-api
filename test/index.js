@@ -154,6 +154,7 @@ test('listing functions with MaxItems', async (harness, t) => {
     MaxItems: 3
   })
   t.ok(data)
+  t.deepEqual(Object.keys(data), ['NextMarker', 'Functions'])
   t.equal(data.Functions && data.Functions.length, 3)
   t.deepEqual(data.Functions, [{
     FunctionName: 'account'
@@ -166,4 +167,53 @@ test('listing functions with MaxItems', async (harness, t) => {
   t.end()
 })
 
-test('listing functions with Marker')
+test('listing functions with Marker', async (harness, t) => {
+  const lambdaServer = harness.lambdaServer
+
+  lambdaServer.populateFunctions('123', 'us-east-1', [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }, {
+    FunctionName: 'contact2'
+  }, {
+    FunctionName: 'contact3'
+  }, {
+    FunctionName: 'contact4'
+  }])
+
+  const data = await harness.listFunctions({
+    MaxItems: 2
+  })
+  t.ok(data)
+  t.deepEqual(Object.keys(data), ['NextMarker', 'Functions'])
+  t.deepEqual(data.Functions, [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }])
+
+  const data2 = await harness.listFunctions({
+    MaxItems: 2,
+    Marker: data.NextMarker
+  })
+  t.ok(data2)
+  t.deepEqual(Object.keys(data2), ['NextMarker', 'Functions'])
+  t.deepEqual(data2.Functions, [{
+    FunctionName: 'contact2'
+  }, {
+    FunctionName: 'contact3'
+  }])
+
+  const data3 = await harness.listFunctions({
+    MaxItems: 2,
+    Marker: data2.NextMarker
+  })
+  t.ok(data3)
+  t.deepEqual(Object.keys(data3), ['Functions'])
+  t.deepEqual(data3.Functions, [{
+    FunctionName: 'contact4'
+  }])
+
+  t.end()
+})

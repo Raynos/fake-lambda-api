@@ -38,6 +38,9 @@ class FakeLambdaAPI {
 
     // https://github.com/typescript-eslint/typescript-eslint/issues/1943
     /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+    /** @type {Map<string, { offset: number}>} */
+    this.tokens = new Map()
+
     /** @type {Map<string, FunctionConfiguration[]>} */
     this._functions = new Map()
     /* eslint-enable @typescript-eslint/no-unsafe-assignment */
@@ -277,19 +280,43 @@ class FakeLambdaAPI {
     const urlObj = new URL(url, 'http://localhost')
 
     const MaxItems = urlObj.searchParams.get('MaxItems')
+    const markerParam = urlObj.searchParams.get('Marker')
     const maxItems = MaxItems ? parseInt(MaxItems, 10) : 50
 
-    const functionsArr = this._getFunctionsMap(req).slice(
-      0, maxItems
-    )
+    const response = {}
+    const rawFunctions = this._getFunctionsMap(req)
 
-    // TODO: req.Marker
-    // TODO: pagination
-
-    return {
-      NextMarker: undefined,
-      Functions: functionsArr
+    let offset = 0
+    if (markerParam) {
+      const tokenInfo = this.tokens.get(markerParam)
+      this.tokens.delete(markerParam)
+      if (!tokenInfo) {
+        throw new Error('invalid marker: ' + markerParam)
+      }
+      offset = tokenInfo.offset
     }
+
+    const end = offset + maxItems
+    response.Functions = rawFunctions.slice(offset, end)
+    if (rawFunctions.length > end) {
+      response.NextMarker = cuuid()
+      this.tokens.set(response.NextMarker, { offset: end })
+    }
+
+    return response
   }
 }
 exports.FakeLambdaAPI = FakeLambdaAPI
+
+/**
+ * @returns {string}
+ */
+function cuuid () {
+  const str = (
+    Date.now().toString(16) + Math.random().toString(16).slice(2) +
+    Math.random().toString(16).slice(2)
+  ).slice(0, 32)
+  return str.slice(0, 8) + '-' + str.slice(8, 12) + '-' +
+    str.slice(12, 16) + '-' + str.slice(16, 20) + '-' +
+    str.slice(20)
+}
