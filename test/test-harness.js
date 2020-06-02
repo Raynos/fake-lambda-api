@@ -16,13 +16,21 @@ class TestHarness {
 
   /** @returns {Promise<void>} */
   async bootstrap () {
-    const hostPort = await this.lambdaServer.bootstrap()
+    await this.lambdaServer.bootstrap()
+    this.lambda = this.buildLambdaClient('123', 'us-east-1')
+  }
 
-    this.lambda = new AWS.Lambda({
-      region: 'us-east-1',
-      endpoint: `http://${hostPort}`,
+  /**
+   * @param {string} accessKeyId
+   * @param {string} region
+   * @returns {AWS.Lambda}
+   */
+  buildLambdaClient (accessKeyId, region) {
+    return new AWS.Lambda({
+      region: region,
+      endpoint: `http://${this.lambdaServer.hostPort}`,
       sslEnabled: false,
-      accessKeyId: '123',
+      accessKeyId: accessKeyId,
       secretAccessKey: 'abc'
     })
   }
