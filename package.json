@@ -1,6 +1,6 @@
 {
   "name": "fake-lambda-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Setup a fake Lambda API server for testing purposes",
   "main": "index.js",
   "scripts": {
