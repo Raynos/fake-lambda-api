@@ -16,6 +16,7 @@
     "typescript": "3.9.2"
   },
   "devDependencies": {
+    "@pre-bundled/rimraf": "3.0.0-patch-1",
     "@pre-bundled/tape": "4.11.0",
     "@types/node": "12.0.2",
     "aws-sdk": "2.549.0",

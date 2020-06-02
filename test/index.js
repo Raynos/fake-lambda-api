@@ -5,7 +5,14 @@ process.on('unhandledRejection', (maybeErr) => {
   process.nextTick(() => { throw err })
 })
 
+const util = require('util')
+const rimrafCb = require('@pre-bundled/rimraf')
+const AWS = require('aws-sdk')
+
+const FakeLambdaAPI = require('../index.js').FakeLambdaAPI
 const test = require('./test-harness').test
+
+/** @typedef {{ (err?: Error): void; }} Callback */
 
 test('listing functions', async (harness, t) => {
   t.ok(harness.lambdaServer.hostPort)
@@ -91,7 +98,42 @@ test('populate multiple regions / accounts', async (harness, t) => {
   t.end()
 })
 
-test('listing functions with cache.')
+test('listing functions with cache.', async (harness, t) => {
+  const lambdaServer = harness.lambdaServer
+  await lambdaServer.cacheFunctionsToDisk('123', 'us-east-1', [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }])
+
+  const lambdaServer2 = new FakeLambdaAPI({
+    cachePath: harness.cachePath
+  })
+
+  const hostPort = await lambdaServer2.bootstrap()
+  const lambdaClient = new AWS.Lambda({
+    region: 'us-east-1',
+    endpoint: `http://${hostPort}`,
+    sslEnabled: false,
+    accessKeyId: '123',
+    secretAccessKey: 'abc'
+  })
+
+  const data = await lambdaClient.listFunctions().promise()
+  t.ok(data)
+  t.deepEqual(Object.keys(data), ['Functions'])
+  t.deepEqual(data.Functions, [{
+    FunctionName: 'account'
+  }, {
+    FunctionName: 'contact'
+  }])
+
+  await lambdaServer2.close()
+  await util.promisify((/** @type {Callback} */ cb) => {
+    rimrafCb(harness.cachePath, cb)
+  })()
+  t.end()
+})
 
 test('listing functions with MaxItems')
 test('listing functions with Marker')

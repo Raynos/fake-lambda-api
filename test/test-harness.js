@@ -3,19 +3,31 @@
 const AWS = require('aws-sdk')
 const tape = require('@pre-bundled/tape')
 const tapeCluster = require('tape-cluster')
+const path = require('path')
+const util = require('util')
+const rimrafCb = require('@pre-bundled/rimraf')
 
 const FakeLambdaAPI = require('../index').FakeLambdaAPI
 
+const rimraf = util.promisify(rimrafCb)
+const FIXTURES_DIR = path.join(__dirname, 'fixtures')
+
 class TestHarness {
   constructor () {
+    /** @type {string} */
+    this.cachePath = FIXTURES_DIR
+
     /** @type {FakeLambdaAPI} */
-    this.lambdaServer = new FakeLambdaAPI()
+    this.lambdaServer = new FakeLambdaAPI({
+      cachePath: this.cachePath
+    })
     /** @type {AWS.Lambda|null} */
     this.lambda = null
   }
 
   /** @returns {Promise<void>} */
   async bootstrap () {
+    await rimraf(this.cachePath)
     await this.lambdaServer.bootstrap()
     this.lambda = this.buildLambdaClient('123', 'us-east-1')
   }
