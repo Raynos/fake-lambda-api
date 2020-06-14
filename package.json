@@ -11,7 +11,7 @@
   },
   "dependencies": {},
   "binDependencies": {
-    "tsdocstandard": "15.4.2",
+    "tsdocstandard": "15.5.2",
     "type-coverage": "2.4.3",
     "typescript": "3.9.2"
   },
