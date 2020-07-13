@@ -150,7 +150,7 @@ class FakeLambdaAPI {
     await mkdir(functionsDir, { recursive: true })
     await writeFile(
       path.join(
-        functionsDir, `${profile}::${region}-functions.json`
+        functionsDir, `${profile}--${region}-functions.json`
       ), JSON.stringify({
         type: 'cached-functions',
         profile: profile,
@@ -204,7 +204,7 @@ class FakeLambdaAPI {
    * @returns {void}
    */
   populateFunctions (profile, region, functions) {
-    const key = `${profile}::${region}`
+    const key = `${profile}--${region}`
     const funcs = this._functions.get(key) || []
     funcs.push(...functions)
 
@@ -260,14 +260,14 @@ class FakeLambdaAPI {
       profile = accessKeyId
     }
 
-    const key = `${profile}::${region}`
+    const key = `${profile}--${region}`
 
     const functions = this._functions.get(key)
     if (functions) {
       return functions
     }
 
-    return this._functions.get('default::us-east-1') || []
+    return this._functions.get('default--us-east-1') || []
   }
 
   /**
